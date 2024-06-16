@@ -206,21 +206,21 @@ def CLAHE(rgb):
     return cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
 
 
-# Convolution function
+# Define convolution function
 def apply_convolution(image, kernel, stride=1, padding='valid'):
     if padding == 'same':
         pad_h = (kernel.shape[0] - 1) // 2
         pad_w = (kernel.shape[1] - 1) // 2
         image = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant')
-    
+
     output_height = (image.shape[0] - kernel.shape[0]) // stride + 1
     output_width = (image.shape[1] - kernel.shape[1]) // stride + 1
     output = np.zeros((output_height, output_width))
-    
+
     for y in range(0, image.shape[0] - kernel.shape[0] + 1, stride):
         for x in range(0, image.shape[1] - kernel.shape[1] + 1, stride):
             output[y // stride, x // stride] = np.sum(image[y:y + kernel.shape[0], x:x + kernel.shape[1]] * kernel)
-    
+
     return output
 
 # Edge Filters
@@ -237,38 +237,46 @@ edge_enhancement = np.array([[-1, -1, -1],
                              [-1, -1, -1]])
 
 
-data = np.array([cv2.cvtColor(cv2.imread(p), cv2.COLOR_BGR2RGB) for p in PATH.glob('*')])
-print(data.shape)
+# Load images in RGB format
+data = np.array([cv2.cvtColor(cv2.imread(str(p)), cv2.COLOR_BGR2RGB) for p in PATH.glob('*')])
 
 for i in range(data.shape[0]):
-    img = data[i]
+    rgb_img = data[i]
+    gray_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2GRAY)
 
-    vertical_edges = apply_convolution(img, vertical_edge_detection, padding='same')
-    horizontal_edges = apply_convolution(img, horizontal_edge_detection, padding='same')
-    enhanced_edges = apply_convolution(img, edge_enhancement, padding='same')
+    lab_img = FuzzyContrastEnhance(rgb_img, 'LAB')
+    lab_gray = cv2.cvtColor(lab_img, cv2.COLOR_RGB2GRAY)
 
-    fce = FuzzyContrastEnhance(img, 'HLS')
-    he = HE(img)
-    clahe = CLAHE(img) 
-    # display(Markdown(f'### <p style="text-align: center;">Sample Photo {i+1}</p>'))
+    # enhanced_edges = cv2.filter2D(gray_img, -1, edge_enhancement)
+
+    # vertical_edges = apply_convolution(gray_img, vertical_edge_detection, padding='same')
+    # horizontal_edges = apply_convolution(gray_img, horizontal_edge_detection, padding='same')
+    # enhanced_edges = apply_convolution(gray_img, edge_enhancement, padding='same')
+
+
+    fce = FuzzyContrastEnhance(rgb_img, 'HLS')
+    he = HE(rgb_img)
+    clahe = CLAHE(rgb_img) 
+
     plt.figure(figsize=(15, 10))
     plt.subplot(2, 2, 1)
-    org_img = plt.imshow(enhanced_edges)
+    org_img = plt.imshow(rgb_img, cmap='gray')
     plt.title('Original Image')
-    # plt.colorbar(org_img, orientation='vertical')
-    
+
     plt.subplot(2, 2, 2)
-    enh_img = plt.imshow(FuzzyContrastEnhance(img, 'LAB'))
-    plt.title('YCbCr Fuzzy Contrast Enhance')
-    # plt.colorbar(enh_img, orientation='vertical')
+    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'LAB'))
+    plt.title('LAB Fuzzy Contrast Enhance')
 
     plt.subplot(2, 2, 3)
-    enh_img = plt.imshow(FuzzyContrastEnhance(img, 'XYZ'))
-    plt.title('XYZ Fuzzy Contrast Enhance')
-    
+    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'XYZ'))
+    plt.title('horizontal_edges')
+
     plt.subplot(2, 2, 4)
-    enh_img = plt.imshow(FuzzyContrastEnhance(img, 'HSV'))
+    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'HSV'))
     plt.title('HSV Fuzzy Contrast Enhance')
+
+    plt.tight_layout()
+    plt.show()
     
     # plt.subplot(2, 2, 3)
     # plt.imshow(he)
@@ -277,6 +285,3 @@ for i in range(data.shape[0]):
     # plt.subplot(2, 2, 4)
     # plt.imshow(clahe)
     # plt.title('CLAHE')
-    
-    plt.tight_layout()
-    plt.show()
