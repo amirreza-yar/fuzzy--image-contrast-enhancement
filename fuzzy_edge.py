@@ -6,44 +6,97 @@ from pathlib import Path
 PATH = Path('/home/amirreza/proj/fuzzy/image-contrast-enhancement/images/')
 data = [str(p) for p in PATH.glob('*')]
 
-# Step 1: Load the CT scan image
-image_path = data[0]
-image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+# Gaussian Function:
+def Gaussian(x, mean, std):
+    return np.exp(-0.5 * np.square((x - mean) / std))
 
-if image is None:
-    print(f"Error: Unable to load image '{image_path}'")
-    exit()
+# Membership Functions for Edges:
+def VeryWeakEdge(x, M):
+    return Gaussian(x, 0, M / 6)
 
-# Step 2: Display the original image (optional)
-plt.figure(figsize=(8, 8))
-plt.imshow(image, cmap='gray')
-plt.title('Original CT Scan Image')
-plt.axis('off')
+def WeakEdge(x, M):
+    return Gaussian(x, M / 4, M / 6)
+
+def MediumEdge(x, M):
+    return Gaussian(x, M / 2, M / 6)
+
+def StrongEdge(x, M):
+    return Gaussian(x, 3 * M / 4, M / 6)
+
+def VeryStrongEdge(x, M):
+    return Gaussian(x, M, M / 6)
+
+plt.figure(figsize=(20,5))
+i = 1
+for M in (128, 64, 192):
+    x = np.arange(-50, 306)
+    
+    ED = VeryWeakEdge(x, M)
+    VD = WeakEdge(x, M)
+    Da = MediumEdge(x, M)
+    SD = StrongEdge(x, M)
+    SB = VeryStrongEdge(x, M)
+
+
+    plt.subplot(3, 1, i)
+    i += 1
+    plt.plot(x, ED, 'k-.',label='VeryWeakEdge', linewidth=1)
+    plt.plot(x, VD, 'k-',label='WeakEdge', linewidth=2)
+    plt.plot(x, Da, 'g-',label='MediumEdge', linewidth=2)
+    plt.plot(x, SD, 'b-',label='StrongEdge', linewidth=2)
+    plt.plot(x, SB, 'r-',label='VeryStrongEdge', linewidth=2)
+    plt.plot((M, M), (0, 1), 'm--', label='M', linewidth=2)
+    plt.plot((0, 0), (0, 1), 'k--', label='MinIntensity', linewidth=2)
+    plt.plot((255, 255), (0, 1), 'k--', label='MaxIntensity', linewidth=2)
+    plt.xlim(-50, 305)
+    plt.ylim(0.0, 1.01)
+    plt.title(f'M={M}')
+plt.legend()
+plt.xlabel('Pixel intensity')
+plt.ylabel('Degree of membership')
 plt.show()
 
-# Step 3: Noise Reduction - Gaussian Blur
-blurred_image = cv2.GaussianBlur(image, (5, 5), 0)  # Example: kernel size (5, 5)
+# Fuzzy Inference:
+def FuzzyEdgeInference(x, M):
+    VW = VeryWeakEdge(x, M)
+    W = WeakEdge(x, M)
+    M = MediumEdge(x, M)
+    S = StrongEdge(x, M)
+    VS = VeryStrongEdge(x, M)
+    
+    return np.maximum.reduce([VW, W, M, S, VS])
 
-# Step 4: Display the blurred image (optional)
-plt.figure(figsize=(8, 8))
-plt.imshow(blurred_image, cmap='gray')
-plt.title('Blurred CT Scan Image (Noise Reduction)')
-plt.axis('off')
-plt.show()
+def ApplyFuzzyEdgeEnhancement(image):
+    # Convert to grayscale if not already
+    if len(image.shape) == 3:
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray_image = image
+    
+    # Calculate gradient magnitude
+    grad_x = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
+    grad_y = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
+    grad_mag = np.sqrt(grad_x**2 + grad_y**2)
+    
+    # Calculate M value (mean gradient magnitude)
+    M = np.mean(grad_mag)
+    
+    # Apply fuzzy edge enhancement
+    enhanced_edges = FuzzyEdgeInference(grad_mag, M)
+    
+    # Normalize enhanced edges to the range [0, 255]
+    enhanced_edges = cv2.normalize(enhanced_edges, None, 0, 255, cv2.NORM_MINMAX)
+    enhanced_edges = enhanced_edges.astype(np.uint8)
+    
+    return enhanced_edges
 
-# Step 5: Normalization - Z-score Normalization
-mean = np.mean(blurred_image)
-std = np.std(blurred_image)
-normalized_image = (blurred_image - mean) / std
+image = cv2.imread(data[0])
 
-# Step 6: Display the normalized image (optional)
-plt.figure(figsize=(8, 8))
-plt.imshow(normalized_image, cmap='gray')
-plt.title('Normalized CT Scan Image')
-plt.axis('off')
-plt.show()
+# Apply Fuzzy Edge Enhancement
+enhanced_image = ApplyFuzzyEdgeEnhancement(image)
 
-# Step 7: Further Processing - Apply your fuzzy contrast enhancement or other methods
-# Example:
-# enhanced_image = your_fuzzy_contrast_enhancement_function(normalized_image)
-# Continue with segmentation, feature extraction, etc.
+# Display the result
+# cv2.imshow('Original Image', image)
+# cv2.imshow('Enhanced Image', enhanced_image)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()

@@ -5,6 +5,9 @@ from IPython.display import display, Markdown
 from glob2 import glob
 from pathlib import Path
 
+from edge_enh import DefaultEdgeEnh
+from fuzzy_edge import ApplyFuzzyEdgeEnhancement
+
 PATH = Path('/home/amirreza/proj/fuzzy/image-contrast-enhancement/images/')
 
 # Gaussian Function:
@@ -117,16 +120,16 @@ for pixel in (64, 96, 160, 192):
     centroid, output_fuzzy_set = Infer(np.array([pixel]), M, get_fuzzy_set=True)
     plt.subplot(4, 1, i)
     i += 1
-    plt.plot(x, output_fuzzy_set, 'k-',label='FuzzySet', linewidth=2)
-    plt.plot((M, M), (0, 1), 'm--', label='M', linewidth=2)
-    plt.plot((pixel, pixel), (0, 1), 'g--', label='Input', linewidth=2)
-    plt.plot((centroid, centroid), (0, 1), 'r--', label='Output', linewidth=2)
-    plt.fill_between(x, np.zeros(356), output_fuzzy_set, color=(.9, .9, .9, .9))
-    plt.xlim(-50, 305)
-    plt.ylim(0.0, 1.01)
-    plt.xlabel('Output pixel intensity')
-    plt.ylabel('Degree of membership')
-    plt.title(f'input_pixel_intensity = {pixel}\nM = {M}')
+    # plt.plot(x, output_fuzzy_set, 'k-',label='FuzzySet', linewidth=2)
+    # plt.plot((M, M), (0, 1), 'm--', label='M', linewidth=2)
+    # plt.plot((pixel, pixel), (0, 1), 'g--', label='Input', linewidth=2)
+    # plt.plot((centroid, centroid), (0, 1), 'r--', label='Output', linewidth=2)
+    # plt.fill_between(x, np.zeros(356), output_fuzzy_set, color=(.9, .9, .9, .9))
+    # plt.xlim(-50, 305)
+    # plt.ylim(0.0, 1.01)
+    # plt.xlabel('Output pixel intensity')
+    # plt.ylabel('Degree of membership')
+    # plt.title(f'input_pixel_intensity = {pixel}\nM = {M}')
 # plt.legend()
 # plt.show()
 
@@ -136,67 +139,98 @@ for i in range(len(means)):
     M = means[i]
     x = np.arange(256)
     y = np.array([Infer(np.array([i]), M) for i in x])
-    plt.subplot(1, len(means), i+1)
-    plt.plot(x, y, 'r-', label='IO mapping')
-    plt.xlim(0, 256)
-    plt.ylim(-50, 355)
-    plt.xlabel('Input Intensity')
-    plt.ylabel('Output Intensity')
-    plt.title(f'M = {M}')
+    # plt.subplot(1, len(means), i+1)
+    # plt.plot(x, y, 'r-', label='IO mapping')
+    # plt.xlim(0, 256)
+    # plt.ylim(-50, 355)
+    # plt.xlabel('Input Intensity')
+    # plt.ylabel('Output Intensity')
+    # plt.title(f'M = {M}')
 # plt.show()
 
 
 # Proposed fuzzy method
 
-def FuzzyContrastEnhance(rgb, color_space='LAB'):
-    color_space_dict = {
-        'LAB': (cv2.COLOR_RGB2LAB, cv2.COLOR_LAB2RGB, 0),
-        'XYZ': (cv2.COLOR_RGB2XYZ, cv2.COLOR_XYZ2RGB, 0),
-        'YCbCr': (cv2.COLOR_RGB2YCrCb, cv2.COLOR_YCrCb2RGB, 0),
-        'HSV': (cv2.COLOR_RGB2HSV, cv2.COLOR_HSV2RGB, 0),
-        'HLS': (cv2.COLOR_RGB2HLS, cv2.COLOR_HLS2RGB, 1),
-        'LUV': (cv2.COLOR_RGB2LUV, cv2.COLOR_LUV2RGB, 0),
-        'YUV': (cv2.COLOR_RGB2YUV, cv2.COLOR_YUV2RGB, 0)
-    }
+# def FuzzyContrastEnhance(rgb, color_space='LAB'):
+#     color_space_dict = {
+#         'LAB': (cv2.COLOR_RGB2LAB, cv2.COLOR_LAB2RGB, 0),
+#         'XYZ': (cv2.COLOR_RGB2XYZ, cv2.COLOR_XYZ2RGB, 0),
+#         'YCbCr': (cv2.COLOR_RGB2YCrCb, cv2.COLOR_YCrCb2RGB, 0),
+#         'HSV': (cv2.COLOR_RGB2HSV, cv2.COLOR_HSV2RGB, 0),
+#         'HLS': (cv2.COLOR_RGB2HLS, cv2.COLOR_HLS2RGB, 1),
+#         'LUV': (cv2.COLOR_RGB2LUV, cv2.COLOR_LUV2RGB, 0),
+#         'YUV': (cv2.COLOR_RGB2YUV, cv2.COLOR_YUV2RGB, 0)
+#     }
 
-    if color_space not in color_space_dict:
-        raise ValueError(f"Unsupported color space: {color_space}")
+#     if color_space not in color_space_dict:
+#         raise ValueError(f"Unsupported color space: {color_space}")
 
-    # Get conversion codes and L channel index
-    convert_to, convert_from, l_channel = color_space_dict[color_space]
+#     # Get conversion codes and L channel index
+#     convert_to, convert_from, l_channel = color_space_dict[color_space]
 
-    # Convert RGB to the selected color space
-    lab = cv2.cvtColor(rgb, convert_to)
-    l = lab[:, :, l_channel]
+#     # Convert RGB to the selected color space
+#     lab = cv2.cvtColor(rgb, convert_to)
+#     l = lab[:, :, l_channel]
 
+#     # Calculate M value
+#     M = np.mean(l)
+#     if M < 128:
+#         M = 127 - (127 - M) / 2
+#     else:
+#         M = 128 + M / 2
+
+#     # Precompute the fuzzy transform
+#     x = list(range(-50, 306))
+#     FuzzyTransform = dict(zip(x, [Infer(np.array([i]), M) for i in x]))
+
+#     # Apply the transform to L channel
+#     u, inv = np.unique(l, return_inverse=True)
+#     l = np.array([FuzzyTransform[i] for i in u])[inv].reshape(l.shape)
+
+#     # Min-max scale the output L channel to fit (0, 255)
+#     Min = np.min(l)
+#     Max = np.max(l)
+#     lab[:, :, l_channel] = (l - Min) / (Max - Min) * 255
+
+#     # Convert back to RGB from the selected color space
+#     return cv2.cvtColor(lab, convert_from)
+    
+
+def FuzzyContrastEnhance(rgb):
+    # Convert RGB to LAB
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
+    
+    # Get L channel
+    l = lab[:, :, 0]
+    
     # Calculate M value
     M = np.mean(l)
     if M < 128:
-        M = 127 - (127 - M) / 2
+        M = 127 - (127 - M)/2
     else:
-        M = 128 + M / 2
-
+        M = 128 + M/2
+        
     # Precompute the fuzzy transform
-    x = list(range(-50, 306))
-    FuzzyTransform = dict(zip(x, [Infer(np.array([i]), M) for i in x]))
-
-    # Apply the transform to L channel
-    u, inv = np.unique(l, return_inverse=True)
+    x = list(range(-50,306))
+    FuzzyTransform = dict(zip(x,[Infer(np.array([i]), M) for i in x]))
+    
+    # Apply the transform to l channel
+    u, inv = np.unique(l, return_inverse = True)
     l = np.array([FuzzyTransform[i] for i in u])[inv].reshape(l.shape)
-
-    # Min-max scale the output L channel to fit (0, 255)
+    
+    # Min-max scale the output L channel to fit (0, 255):
     Min = np.min(l)
     Max = np.max(l)
-    lab[:, :, l_channel] = (l - Min) / (Max - Min) * 255
-
-    # Convert back to RGB from the selected color space
-    return cv2.cvtColor(lab, convert_from)
+    lab[:, :, 0] = (l - Min)/(Max - Min) * 255
+    
+    # Convert LAB to RGB
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
 
 # Traditional method of histogram equalization
 def HE(rgb):
     lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
     lab[:, :, 0] = cv2.equalizeHist(lab[:, :, 0])
-    return cv2.cvtColor(lab, cv2.COLOR_XYZ2RGB)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
 
 # Contrast Limited Adaptive Histogram Equalization
 def CLAHE(rgb):
@@ -233,19 +267,20 @@ horizontal_edge_detection = np.array([[ 1,  1,  1],
                                       [-1, -1, -1]])
 
 edge_enhancement = np.array([[-1, -1, -1],
-                             [-1,  8, -1],
+                             [-1,  9, -1],
                              [-1, -1, -1]])
 
 
 # Load images in RGB format
-data = np.array([cv2.cvtColor(cv2.imread(str(p)), cv2.COLOR_BGR2RGB) for p in PATH.glob('*')])
+data = np.array([cv2.cvtColor(cv2.imread(str(p)), cv2.IMREAD_COLOR) for p in PATH.glob('*')])
 
 for i in range(data.shape[0]):
     rgb_img = data[i]
+    # rgb_img = cv2.imread(data[0], cv2.IMREAD_COLOR)
     gray_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2GRAY)
 
-    lab_img = FuzzyContrastEnhance(rgb_img, 'LAB')
-    lab_gray = cv2.cvtColor(lab_img, cv2.COLOR_RGB2GRAY)
+    # lab_img = FuzzyContrastEnhance(rgb_img, 'LAB')
+    # lab_gray = cv2.cvtColor(lab_img, cv2.COLOR_RGB2GRAY)
 
     # enhanced_edges = cv2.filter2D(gray_img, -1, edge_enhancement)
 
@@ -253,8 +288,6 @@ for i in range(data.shape[0]):
     # horizontal_edges = apply_convolution(gray_img, horizontal_edge_detection, padding='same')
     # enhanced_edges = apply_convolution(gray_img, edge_enhancement, padding='same')
 
-
-    fce = FuzzyContrastEnhance(rgb_img, 'HLS')
     he = HE(rgb_img)
     clahe = CLAHE(rgb_img) 
 
@@ -264,24 +297,26 @@ for i in range(data.shape[0]):
     plt.title('Original Image')
 
     plt.subplot(2, 2, 2)
-    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'LAB'))
+    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img))
     plt.title('LAB Fuzzy Contrast Enhance')
 
+    # plt.subplot(2, 2, 3)
+    # enh_img = plt.imshow()
+    # plt.title('horizontal_edges')
+
+    # plt.subplot(2, 2, 4)
+    # enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'HSV'))
+    # plt.title('HSV Fuzzy Contrast Enhance')
+
     plt.subplot(2, 2, 3)
-    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'XYZ'))
-    plt.title('horizontal_edges')
+    # plt.imshow(ApplyFuzzyEdgeEnhancement(rgb_img))
+    plt.imshow(ApplyFuzzyEdgeEnhancement(rgb_img))
+    plt.title('Fuzzy Edge Enhance')
 
     plt.subplot(2, 2, 4)
-    enh_img = plt.imshow(FuzzyContrastEnhance(rgb_img, 'HSV'))
-    plt.title('HSV Fuzzy Contrast Enhance')
+    plt.imshow(DefaultEdgeEnh(rgb_img))
+    plt.title('Fuzzy Contrast-Edge Enhance')
 
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.show()
     
-    # plt.subplot(2, 2, 3)
-    # plt.imshow(he)
-    # plt.title('Traditional HE')
-    
-    # plt.subplot(2, 2, 4)
-    # plt.imshow(clahe)
-    # plt.title('CLAHE')
